@@ -3,8 +3,12 @@ import AccountabilityFeed from './components/AccountabilityFeed';
 
 export default async function Home() {
 
+  const fetchUrl = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:3000' 
+  : process.env.NEXT_PUBLIC_BASE_URL;
+
   const getTasks = async () => {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/tasks`, {
+    const response = await fetch(`${fetchUrl}/api/tasks`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -12,11 +16,8 @@ export default async function Home() {
       cache: 'no-store',
     });
     const data = await response.json();
-    console.log('Client-side received data:', JSON.stringify(data, null, 2));
     return data;
   };
-
-
 
   return (
     <div className="p-6 max-w-2xl mx-auto bg-gray-100 min-h-screen">

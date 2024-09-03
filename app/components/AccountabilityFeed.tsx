@@ -5,6 +5,7 @@ import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ToastContainer, toast } from 'react-toastify';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 interface Task {
   id: string;
@@ -57,7 +58,10 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
       };
 
       // Send POST request to the API endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/tasks`, {
+      const fetchUrl = process.env.NODE_ENV === 'development'  
+      ? 'http://localhost:3000' 
+      : process.env.NEXT_PUBLIC_BASE_URL;
+      const response = await fetch(`${fetchUrl}/api/upload`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,7 +93,6 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
     setNewTaskImage(null);
   };
 
-  // this is a function to add a new task to the database
   const handleAddTask = async () => {
     if (!newTaskTitle.trim()) {
       toast.error('Please enter a task title');
@@ -115,7 +118,11 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
         } : null
       };
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/tasks`, {
+      const fetchUrl = process.env.NODE_ENV === 'development'  
+      ? 'http://localhost:3000' 
+      : process.env.NEXT_PUBLIC_BASE_URL;
+
+      const response = await fetch(`${fetchUrl}/api/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,19 +156,28 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
               {new Date(task.date).toLocaleDateString()}
             </p>
             {task.images && task.images.length > 0 ? (
-              <div className="relative w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
-                
-                <img
-                  src={task.images[0]}
-                  alt={`Progress for ${task.title}`}
-                  className="w-full h-full object-cover"
-                />
+              <Carousel className="w-full">
+                <CarouselContent>
+                  {task.images.map((image, index) => (
+                    <CarouselItem key={index}>
+                      <div className="relative w-full h-96 bg-gray-200 rounded-lg overflow-hidden">
+                        <img
+                          src={image}
+                          alt={`Progress for ${task.title} - Image ${index + 1}`}
+                          className="w-full h-full object-cover object-center"
+
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
                 {task.images.length > 1 && (
-                  <div className="absolute bottom-2 right-2 bg-white rounded-full px-2 py-1 text-xs">
-                    +{task.images.length - 1}
-                  </div>
+                  <>
+                    <CarouselPrevious />
+                    <CarouselNext />
+                  </>
                 )}
-              </div>
+              </Carousel>
             ) : (
               <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
                 <p className="text-gray-500">No images yet</p>
@@ -180,8 +196,8 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
       </Button>
 
       {isAddTaskModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-96">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-96 max-w-full mx-4">
             <h2 className="text-xl font-bold mb-4">Add New Task</h2>
             <Input
               type="text"
@@ -206,8 +222,9 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
 
       <input
         type="file"
+        accept="image/*"
         ref={fileInputRef}
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={handlePhotoUpload}
       />
       
