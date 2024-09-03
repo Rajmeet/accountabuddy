@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ToastContainer, toast } from 'react-toastify';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface Task {
   id: string;
@@ -24,12 +26,13 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState<boolean>(false);
   const [newTaskTitle, setNewTaskTitle] = useState<string>('');
   const [newTaskImage, setNewTaskImage] = useState<File | null>(null);
-  console.log(tasks);
-  
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const router = useRouter();
   
   const handleAddPhoto = (taskId: string) => {
     setSelectedTaskId(taskId);
     if (fileInputRef.current) {
+      setIsLoading(true);
       fileInputRef.current.click();
     }
   };
@@ -74,9 +77,10 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
       }
 
       const result = await response.json();
-      console.log(result);
       
       toast.success('Photo uploaded successfully!');
+      router.refresh();
+      setIsLoading(false);
     } catch (error) {
       console.error('Error uploading photo:', error);
       toast.error('Failed to upload photo. Please try again.');
@@ -91,9 +95,11 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
     setIsAddTaskModalOpen(false);
     setNewTaskTitle('');
     setNewTaskImage(null);
+    setIsLoading(false);
   };
 
   const handleAddTask = async () => {
+    setIsLoading(true);
     if (!newTaskTitle.trim()) {
       toast.error('Please enter a task title');
       return;
@@ -137,6 +143,7 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
       const newTask = await response.json();
       toast.success('New task added successfully!');
       handleAddTaskModalClose();
+      router.refresh();
     } catch (error) {
       console.error('Error adding new task:', error);
       toast.error('Failed to add new task. Please try again.');
@@ -161,11 +168,12 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
                   {task.images.map((image, index) => (
                     <CarouselItem key={index}>
                       <div className="relative w-full h-96 bg-gray-200 rounded-lg overflow-hidden">
-                        <img
+                        <Image
                           src={image}
                           alt={`Progress for ${task.title} - Image ${index + 1}`}
-                          className="w-full h-full object-cover object-center"
-
+                          width={500}
+                          height={500}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       </div>
                     </CarouselItem>
@@ -211,6 +219,7 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
               accept="image/*"
               onChange={(e) => setNewTaskImage(e.target.files?.[0] || null)}
               className="mb-4"
+              capture="environment"
             />
             <div className="flex justify-end">
               <Button onClick={handleAddTaskModalClose} className="mr-2">Cancel</Button>
@@ -220,9 +229,10 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
         </div>
       )}
 
-      <input
+      <Input
         type="file"
         accept="image/*"
+        capture="environment"
         ref={fileInputRef}
         className="hidden"
         onChange={handlePhotoUpload}

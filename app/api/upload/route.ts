@@ -24,14 +24,11 @@ export async function POST(request: Request) {
 
         const docSnap = await getDoc(tasksRef);
         const tasks = docSnap.data()?.tasks;
-        console.log("task_id", taskId);
         // tasks is a list of dictionaries with id, date, title, and images
         // find the task with the given task_id and add the imageUrl to the images list
         const task = tasks.find((task: any) => task.id === taskId);
-        console.log("task", task);
 
         task.images.push(imageUrl);
-        console.log("task", task);
 
         // update the task in the list
         const taskIndex = tasks.findIndex((task: any) => task.id === taskId);
@@ -39,8 +36,6 @@ export async function POST(request: Request) {
 
         // update the tasks in the database
         await setDoc(tasksRef, { tasks });
-
-        console.log("tasks", tasks);
 
         return NextResponse.json({ success: true, imageUrl });
     } catch (error) {
