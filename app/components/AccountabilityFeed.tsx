@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Camera, Plus, X } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import PushupLoaderNew from '@/components/PushupLoader';
 
 interface Task {
   id: string;
@@ -28,11 +29,11 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
   const [newTaskImage, setNewTaskImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const router = useRouter();
-  
+
+
   const handleAddPhoto = (taskId: string) => {
     setSelectedTaskId(taskId);
     if (fileInputRef.current) {
-      setIsLoading(true);
       fileInputRef.current.click();
     }
   };
@@ -41,11 +42,17 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
     const file = event.target.files?.[0];
     if (!file || !selectedTaskId) return;
 
+    setIsLoading(true);
     try {
       // Convert file to base64
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Ensure we're using standard base64 encoding
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
@@ -77,16 +84,17 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
       }
 
       const result = await response.json();
-      
       toast.success('Photo uploaded successfully!');
       router.refresh();
-      setIsLoading(false);
     } catch (error) {
       console.error('Error uploading photo:', error);
       toast.error('Failed to upload photo. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setSelectedTaskId(null);
     }
-    setSelectedTaskId(null);
   };
+
   const handleAddTaskClick = () => {
     setIsAddTaskModalOpen(true);
   };
@@ -99,12 +107,12 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
   };
 
   const handleAddTask = async () => {
-    setIsLoading(true);
     if (!newTaskTitle.trim()) {
       toast.error('Please enter a task title');
       return;
     }
 
+    setIsLoading(true);
     try {
       let imageData = null;
       if (newTaskImage) {
@@ -147,12 +155,20 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
     } catch (error) {
       console.error('Error adding new task:', error);
       toast.error('Failed to add new task. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4">
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <PushupLoaderNew />
+        </div>
+      )}
+      
       {tasks.map(task => (
         <Card key={task.id} className="w-full">
           <CardHeader>
@@ -193,13 +209,13 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
             )}
           </CardContent>
           <CardFooter>
-            <Button className="w-full" onClick={() => handleAddPhoto(task.id)}>
+            <Button className="w-full" onClick={() => handleAddPhoto(task.id)} disabled={isLoading}>
               <Camera className="mr-2 h-4 w-4" /> Add Photo
             </Button>
           </CardFooter>
         </Card>
       ))}
-      <Button className="w-full" onClick={handleAddTaskClick}>
+      <Button className="w-full" disabled={isLoading} onClick={handleAddTaskClick}>
         <Plus className="mr-2 h-4 w-4" /> Add New Task
       </Button>
 
@@ -223,7 +239,9 @@ const AccountabilityFeed: React.FC<AccountabilityFeedProps> = ({ tasks }) => {
             />
             <div className="flex justify-end">
               <Button onClick={handleAddTaskModalClose} className="mr-2">Cancel</Button>
-              <Button onClick={handleAddTask}>Add Task</Button>
+              <Button 
+                disabled={isLoading}
+                onClick={handleAddTask}>Add Task</Button>
             </div>
           </div>
         </div>

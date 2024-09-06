@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { firestore, storage } from '@/lib/firebase';
-import { getDoc, doc, setDoc } from 'firebase/firestore';
+import { getDoc, doc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { ref, getDownloadURL, uploadString } from 'firebase/storage';
 
 export async function POST(request: Request) {
@@ -10,32 +10,42 @@ export async function POST(request: Request) {
         let imageUrl = '';
 
         if (imageFile && imageFile.data) {
-            // Remove the "data:image/jpeg;base64," prefix if present
-            const base64Data = imageFile.data.replace(/^data:image\/\w+;base64,/, '');
+            const base64Data = imageFile.data;
             const fileRef = ref(storage, `task_images/${Date.now()}_${imageFile.task_id}`);
             await uploadString(fileRef, base64Data, 'base64', { contentType: imageFile.type });
             imageUrl = await getDownloadURL(fileRef);
         }
 
         const db = firestore;
-        const today = new Date().toISOString().split('T')[0];
 
-        const tasksRef = doc(db, 'tasks', today);
+        const tasksCollectionRef = collection(db, 'tasks');
+        const querySnapshot = await getDocs(tasksCollectionRef);
 
-        const docSnap = await getDoc(tasksRef);
+        let taskToUpdate;
+        let taskDocRef;
+
+        for (const doc of querySnapshot.docs) {
+            const tasks = doc.data().tasks;
+            const task = tasks.find((t: any) => t.id === taskId);
+            if (task) {
+                taskToUpdate = task;
+                taskDocRef = doc.ref;
+                break;
+            }
+        }
+
+        if (!taskToUpdate || !taskDocRef) {
+            return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+        }
+
+        taskToUpdate.images.push(imageUrl);
+
+        const docSnap = await getDoc(taskDocRef);
         const tasks = docSnap.data()?.tasks;
-        // tasks is a list of dictionaries with id, date, title, and images
-        // find the task with the given task_id and add the imageUrl to the images list
-        const task = tasks.find((task: any) => task.id === taskId);
+        const taskIndex = tasks.findIndex((t: any) => t.id === taskId);
+        tasks[taskIndex] = taskToUpdate;
 
-        task.images.push(imageUrl);
-
-        // update the task in the list
-        const taskIndex = tasks.findIndex((task: any) => task.id === taskId);
-        tasks[taskIndex] = task;
-
-        // update the tasks in the database
-        await setDoc(tasksRef, { tasks });
+        await setDoc(taskDocRef, { tasks });
 
         return NextResponse.json({ success: true, imageUrl });
     } catch (error) {
